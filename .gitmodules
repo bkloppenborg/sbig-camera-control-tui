@@ -1,0 +1,3 @@
+[submodule "external/niad"]
+	path = external/niad
+	url = git@github.com:bkloppenborg/niad.git
