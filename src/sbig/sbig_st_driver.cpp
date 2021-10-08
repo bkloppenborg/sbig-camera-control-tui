@@ -80,7 +80,6 @@ void SbigSTDriver::Close() {
   // Explicitly close all devices
   SetDriverHandleParams handle_p;
   for(auto it = active_devices_.begin(); it != active_devices_.end(); it++) {
-    std::cout << "Closing device with handle " << it->first << std::endl;
     CloseDevice(it->second);
   }
 
@@ -163,7 +162,6 @@ std::shared_ptr<SbigSTDevice> SbigSTDriver::OpenDevice(const SbigSTDeviceInfo & 
     auto d_info = d->GetInfo();
 
     if(info == d_info) {
-      std::cout << "Returning active device with handle " << it->first << std::endl;
       return active_devices_[h];
     }
   }
@@ -193,7 +191,6 @@ std::shared_ptr<SbigSTDevice> SbigSTDriver::OpenDevice(const SbigSTDeviceInfo & 
 
   // Make the device, add it to the map, return it to the caller.
   auto device = std::make_shared<SbigSTDevice>(info, handle_r.handle);
-  std::cout << "Returning new device with handle " << handle_r.handle << std::endl;
   active_devices_[handle_r.handle] = device;
 
   // TODO: Rework the initialization sequence for devices so we needn't use
