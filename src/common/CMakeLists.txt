@@ -7,7 +7,6 @@ add_library(common
   common.cpp
   coordinate_conversions.cpp
   logging.cpp
-  image.cpp
 )
 
 target_link_libraries(common

@@ -19,7 +19,7 @@ Worker::Worker(Client * client)
 Worker::~Worker() {
 }
 
-void Worker::Worker::run() {
+void Worker::run() {
 
   int status = setupCamera();
   if(status != 0) {
@@ -47,7 +47,8 @@ void Worker::Worker::run() {
 
     qDebug() << "Starting exposure" << exp_num;
     // Exit the loop if we have exceeded the stop date-time.
-    if (QDateTime::currentDateTimeUtc() > mStopTime) {
+    auto now = QDateTime::currentDateTimeUtc();
+    if (now.addSecs(mExposureDuration) > mStopTime) {
       qDebug() << "Stop time exceeded. Exiting.";
       break;
     }
@@ -91,8 +92,8 @@ void Worker::Worker::run() {
     QString filename = mObjectName + "_" +
       QDateTime::currentDateTimeUtc().toString(Qt::ISODate) +
       ".fits";
-    filename = "!" + mSaveDir.filePath(filename);
-    image_data->save_to_fits(filename.toStdString());
+    filename = mSaveDir.filePath(filename);
+    image_data->saveToFITS(filename.toStdString(), true);
     qDebug() << "Saved " << filename;
 
     // Delete the image data

@@ -9,7 +9,7 @@
 #include <math.h>
 
 
-void ImageData::save_to_fits(std::string filename, bool overwrite) {
+void ImageData::saveToFITS(std::string filename, bool overwrite) {
 
   fitsfile * fptr;
   int status = 0;

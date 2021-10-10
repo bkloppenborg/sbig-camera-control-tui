@@ -51,7 +51,7 @@ public:
   virtual double setFilter(std::string filter_name) = 0;
 
   /// Change the filter wheel position.
-  /// \param filter_name The integer index of the filter slot to change to (zero indexed)
+  /// \param filter_slot_number The integer index of the filter slot to change to (zero indexed)
   /// \return Delay, in seconds, to change the filter wheel.
   virtual double setFilter(size_t filter_slot_number) = 0;
 

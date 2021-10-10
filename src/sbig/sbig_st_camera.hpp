@@ -3,8 +3,6 @@
 
 // local includes
 #include "sbig_st_readout_mode.hpp"
-#include "ExposureSettings.hpp"
-#include "image.hpp"
 
 // project includes
 #include "camera.hpp"
@@ -17,41 +15,53 @@
 
 class SbigSTDevice;
 
+/// Class representing a SBIG camera.
 class SbigSTCamera : public Camera {
 
 protected:
   /// Pointer to the SBIG ST Device.
   SbigSTDevice * mSTDevice = nullptr;
 
-  // 0 = imaging detector, 1 = tracking detector, 2 = external tracking detector
+  /// Identifier for the detector. From SBIG documentation:
+  /// 0 = imaging detector, 1 = tracking detector, 2 = external tracking detector
   uint16_t mDetectorId  = 0;
 
+  /// Map containing nominal readout settings.
   std::map<niad::CameraReadoutMode, SBIGReadoutMode> mReadoutSettings;
 
-  // capabilities
-  bool has_electronic_shutter_ = false;
-  bool has_physical_shutter_= false;
+  bool has_electronic_shutter_ = false; ///< True if there is an electronic shutter
+  bool has_physical_shutter_   = false; ///< True if there is a physical shutter.
 
-  std::atomic<bool> do_exposure_;
+  std::atomic<bool> do_exposure_; ///< Flag to indicate if an exposure should be continued.
 
 public:
-  ///
-  /// \param detector_type, 0 = imaging sensor, 1 = internal tracker, 2 = external tracker
+  /// Default constructor.
+  /// \param device Pointer to the underlying SBIG device.
+  /// \param device_handle Handle to the underlying SBIG device.
+  /// \param detector_type 0 = imaging sensor, 1 = internal tracker, 2 = external tracker
+  /// \param device_info0 SBIG-specific information.
+  /// \param device_info4 SBIG-specific information.
   SbigSTCamera(SbigSTDevice * device, short device_handle, int detector_type,
                GetCCDInfoResults0 device_info0,
                GetCCDInfoResults4 device_info4);
+  /// Default destructor.
   ~SbigSTCamera();
 
 public:
+  /// Get a string describing this object.
   std::string ToString();
 
+  /// Stop an image in progress.
   void  AbortImage();
 
+  /// Flag to indicate if an exposure is in progress.
   bool ImageInProgress() { return do_exposure_; }
 
+  /// Returns a vector of supported readout modes.
   std::vector<SBIGReadoutMode> GetReadoutModes();
 
 public:
+  /// See camera.hpp
   bool init() { return true; };
 
   /// See camera.hpp

@@ -1,11 +1,14 @@
+
+// local includes
 #include "sbig_st_driver.hpp"
 #include "sbig_st_errors.hpp"
-#include "utilities.hpp"
 #include "sbig_st_device_info.hpp"
-#include "ExposureSettings.hpp"
-#include "image.hpp"
 #include "sbig_st_device.hpp"
 
+// project includes
+#include "utilities.hpp"
+
+// system includes
 #include <sstream>
 #include <algorithm>
 #include <thread>

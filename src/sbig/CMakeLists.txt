@@ -15,7 +15,6 @@ add_library(sbig
   sbig_st_errors.cpp
   sbig_st_device_info.cpp
   sbig_st_readout_mode.cpp
-  ExposureSettings.cpp
 )
 
 target_link_libraries(sbig
