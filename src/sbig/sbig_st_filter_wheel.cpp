@@ -76,10 +76,10 @@ void SbigSTFilterWheel::Setup(std::string filter_wheel_id,
   }
 
   // configure the information structure
-  info_.max_slots = max_slots;
-  info_.model_name = filter_wheel_id;
-  info_.active_slot = 1;
-  info_.slot_to_filter_name = slot_to_filter_name;
+  mMaxActiveSlots = max_slots;
+  mName = filter_wheel_id;
+  mActiveSlot = 1;
+  mSlotToFilterName = slot_to_filter_name;
 }
 
 std::vector<std::string> SbigSTFilterWheel::GetSupportedFilterWheels() {
@@ -117,7 +117,7 @@ void SbigSTFilterWheel::Open() {
   cfw_p.cfwCommand = CFWC_OPEN_DEVICE;
   drv.RunCommand(CC_CFW, &cfw_p, &cfw_r, device_->GetHandle());
 
-  // Query the filter to make sure it is really there
+  // Query the filter to make sure it is really there.
   cfw_p.cfwCommand = CFWC_QUERY;
   drv.RunCommand(CC_CFW, &cfw_p, &cfw_r, device_->GetHandle());
 }
@@ -182,7 +182,8 @@ double SbigSTFilterWheel::setFilter(size_t filter_slot) {
 
   } while(goto_in_progress);
 
-  info_.active_slot = filter_slot;
+  // Set the active slot.
+  mActiveSlot = filter_slot;
 
   return 0.0;
 }
@@ -190,7 +191,7 @@ double SbigSTFilterWheel::setFilter(size_t filter_slot) {
 double SbigSTFilterWheel::setFilter(std::string filter_name) {
 
   // Find the filter in the slot-to-filter map. Goto the slot if found.
-  for(auto const& it: info_.slot_to_filter_name) {
+  for(auto const& it: mSlotToFilterName) {
     if(it.second == filter_name)
       setFilter(it.first);
   }
@@ -198,19 +199,3 @@ double SbigSTFilterWheel::setFilter(std::string filter_name) {
   return 0;
 }
 
-std::string SbigSTFilterWheel::GetActiveFilterName() {
-
-  std::string name = "";
-
-  try {
-    name = info_.slot_to_filter_name.at(info_.active_slot);
-  } catch (...) {
-    // do nothing
-  }
-
-  return name;
-}
-
-size_t SbigSTFilterWheel::GetActiveFilterSlot() {
-  return info_.active_slot;
-}

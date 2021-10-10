@@ -26,7 +26,7 @@ protected:
   // 0 = imaging detector, 1 = tracking detector, 2 = external tracking detector
   uint16_t mDetectorId  = 0;
 
-  std::map<READOUT_BINNING_MODE, SBIGReadoutMode> readout_modes_;
+  std::map<niad::CameraReadoutMode, SBIGReadoutMode> mReadoutSettings;
 
   // capabilities
   bool has_electronic_shutter_ = false;
@@ -45,7 +45,6 @@ public:
 public:
   std::string ToString();
 
-  image * AcquireImage(ExposureSettings settings);
   void  AbortImage();
 
   bool ImageInProgress() { return do_exposure_; }
@@ -55,12 +54,28 @@ public:
 public:
   bool init() { return true; };
 
-  // TODO: connect this
-  virtual void setTemperatureTarget(niad::TemperatureType sensor,
-                                    bool set_active, double temperature) {};
+  /// See camera.hpp
+  virtual void setTemperatureTarget(niad::TemperatureType target,
+                                    bool set_active, double temperature);
 
-  // TODO: connect this
-  virtual double getTemperature(niad::TemperatureType sensor) { return 0; }
+  /// See camera.hpp
+  virtual double getTemperatureTarget(niad::TemperatureType target);
+
+  /// See camera.hpp
+  virtual double getTemperature(niad::TemperatureType temperature_type);
+
+  /// See camera.hpp
+  virtual ImageData *acquireImage(double duration,
+          niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1,
+          niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE);
+
+  /// See camera.hpp.
+  virtual ImageData *acquireImage(double duration,
+          uint16_t left, uint16_t right,
+          uint16_t top,  uint16_t bottom,
+          niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1,
+          niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE);
+
   //
 }; // class SbigSTCamera
 

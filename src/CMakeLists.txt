@@ -18,7 +18,11 @@ add_subdirectory(sbig)
 find_package(Qt5 REQUIRED COMPONENTS Core WebSockets)
 
 # Build camera server
-add_executable(camera-server camera_server.cpp)
+add_executable(camera-server
+  main.cpp
+  client.cpp
+  worker.cpp
+)
 target_link_libraries(camera-server 
   Qt5::Core
   Qt5::WebSockets

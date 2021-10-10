@@ -45,7 +45,25 @@ SbigSTCamera::SbigSTCamera(SbigSTDevice *device, short device_handle,
     tmp.pixel_height = bcd2float(info.pixelHeight);
     tmp.pixel_width = bcd2float(info.pixelWidth);
     tmp.name = SBIGReadoutModeToName(info.mode);
-    readout_modes_[tmp.binning_mode] = tmp;
+
+    // Append this to the list of supported readout modes.
+    switch (info.mode) {
+    case RM_1X1:
+      mReadoutSettings[niad::CAMERA_READOUT_MODE_1X1] = tmp;
+      break;
+    case RM_2X2:
+      mReadoutSettings[niad::CAMERA_READOUT_MODE_2X2] = tmp;
+      break;
+    case RM_3X3:
+      mReadoutSettings[niad::CAMERA_READOUT_MODE_3X3] = tmp;
+      break;
+    case RM_9X9:
+      mReadoutSettings[niad::CAMERA_READOUT_MODE_9X9] = tmp;
+      break;
+    default:
+      // ignore all other modes.
+      break;
+  }
 
     // Find the number of pixels
     if (tmp.max_width > pixel_count_x)
@@ -58,6 +76,7 @@ SbigSTCamera::SbigSTCamera(SbigSTDevice *device, short device_handle,
       pixel_size_x = tmp.pixel_width;
     if (tmp.pixel_height < pixel_size_y)
       pixel_size_y = tmp.pixel_height;
+
   }
 
   // Populate the pixel count.
@@ -95,9 +114,9 @@ SbigSTCamera::SbigSTCamera(SbigSTDevice *device, short device_handle,
 
   // Set readout modes.
   mReadoutModes.clear();
-  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_1x1);
-  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_2x2);
-  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_3x3);
+  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_1X1);
+  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_2X2);
+  mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_3X3);
   mReadoutModes.push_back(niad::CAMERA_READOUT_MODE_9X9);
 
   // Set default sensor configuration.
@@ -187,8 +206,8 @@ std::string SbigSTCamera::ToString() {
   ss << " Max Resolution: " << mPixelCount[0] << "x" << mPixelCount[1] << "\n";
 
   // print out the readout modes
-  ss << " Readout Modes: " << readout_modes_.size() << "\n";
-  for(auto it = readout_modes_.begin(); it != readout_modes_.end(); ++it) {
+  ss << " Readout Modes: " << mReadoutSettings.size() << "\n";
+  for(auto it = mReadoutSettings.begin(); it != mReadoutSettings.end(); ++it) {
     auto id = it->first;
     auto data = it->second;
     ss << "  "
@@ -199,46 +218,137 @@ std::string SbigSTCamera::ToString() {
   return ss.str();
 }
 
-image * SbigSTCamera::AcquireImage(ExposureSettings settings) {
+void SbigSTCamera::AbortImage() {
+  do_exposure_ = false;
+}
 
+
+void SbigSTCamera::setTemperatureTarget(niad::TemperatureType sensor,
+                                        bool set_active,
+                                        double temperature) {
+  // Get access to the SBIG driver
+  SbigSTDriver &drv = SbigSTDriver::GetInstance();
+
+  SetTemperatureRegulationParams2 temp_p;
+  if (set_active)
+    temp_p.regulation = 1;
+  else
+    temp_p.regulation = 0; // regulation off
+
+  temp_p.ccdSetpoint = temperature;
+
+  drv.RunCommand(CC_SET_TEMPERATURE_REGULATION2, &temp_p, nullptr,
+                 mSTDevice->GetHandle());
+}
+
+double SbigSTCamera::getTemperature(niad::TemperatureType target) {
+  // Get access to the SBIG driver
+  SbigSTDriver& drv = SbigSTDriver::GetInstance();
+
+  // Set up and execute the query.
+  QueryTemperatureStatusParams temp_p;
+  temp_p.request = TEMP_STATUS_ADVANCED2;
+  QueryTemperatureStatusResults2 temp_r;
+  drv.RunCommand(CC_QUERY_TEMPERATURE_STATUS, &temp_p, &temp_r, mSTDevice->GetHandle());
+
+  double temperature = 0;
+  if(target == niad::TemperatureType::TEMPERATURE_TYPE_SENSOR) {
+    if(mDetectorId == 0)
+      temperature = temp_r.imagingCCDTemperature;
+    else
+      temperature = temp_r.trackingCCDTemperature;
+  } else if (target == niad::TEMPERATURE_TYPE_CHASSIS) {
+    temperature = temp_r.ambientTemperature;
+  } else if (target == niad::TEMPERATURE_TYPE_ENVIRONMENT) {
+    temperature = temp_r.ambientTemperature;
+  }
+
+  return temperature;
+}
+
+double SbigSTCamera::getTemperatureTarget(niad::TemperatureType target) {
+  // Get access to the SBIG driver
+  SbigSTDriver& drv = SbigSTDriver::GetInstance();
+
+  // Set up and execute the query.
+  QueryTemperatureStatusParams temp_p;
+  temp_p.request = TEMP_STATUS_ADVANCED2;
+  QueryTemperatureStatusResults2 temp_r;
+  drv.RunCommand(CC_QUERY_TEMPERATURE_STATUS, &temp_p, &temp_r, mSTDevice->GetHandle());
+
+  double temperature = 0;
+  if (target == niad::TemperatureType::TEMPERATURE_TYPE_SENSOR) {
+    temperature = temp_r.ccdSetpoint;
+  } else if (target == niad::TEMPERATURE_TYPE_CHASSIS) {
+    temperature = temp_r.ambientTemperature;
+  } else if (target == niad::TEMPERATURE_TYPE_ENVIRONMENT) {
+    temperature = temp_r.ambientTemperature;
+  }
+
+  return temperature;
+}
+
+ImageData * SbigSTCamera::acquireImage(double duration,
+                                       niad::CameraReadoutMode readout_mode,
+                                       niad::CameraShutterAction shutter_action) {
+
+  // Find the pixel configuration for this readout mode.
+  auto mode_info = mReadoutSettings[readout_mode];
+
+  auto image_data = acquireImage(duration,
+                      0, mode_info.max_width,
+                      0, mode_info.max_height,
+                      readout_mode,
+                      shutter_action);
+
+  return image_data;
+}
+
+ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
+                                       uint16_t left, uint16_t right,
+                                       uint16_t top, uint16_t bottom,
+                                       niad::CameraReadoutMode readout_mode,
+                                       niad::CameraShutterAction shutter_action)
+{
   // Indicate we are going to do an exposure.
   do_exposure_ = true;
 
-  // Enforce the detector's known limitations.
-  auto binning_mode = settings.binning_mode_;
-  auto readout_mode = readout_modes_.at(binning_mode);
+  // Get the camera's preferred settings for this readout mode.
+  auto default_config = mReadoutSettings[readout_mode];
 
   // enforce maximum height.
-  if(settings.right_ > readout_mode.max_width)
-    settings.right_ = readout_mode.max_width;
-  if(settings.bottom_ > readout_mode.max_height)
-    settings.bottom_  = readout_mode.max_height;
+  if(right > default_config.max_width)
+    right = default_config.max_width;
+  if(bottom > default_config.max_height)
+    bottom  = default_config.max_height;
 
   // enforce exposure duration
-  if (settings.exposure_duration_sec_ < mExposureDurationMin)
-    settings.exposure_duration_sec_ = mExposureDurationMin;
-  if(settings.exposure_duration_sec_ > mExposureDurationMax)
-    settings.exposure_duration_sec_ = mExposureDurationMax;
+  if (exposure_duration_sec < mExposureDurationMin)
+    exposure_duration_sec = mExposureDurationMin;
+  if(exposure_duration_sec > mExposureDurationMax)
+    exposure_duration_sec = mExposureDurationMax;
 
   // Prohibit a guide camera from altering shutter state if the main
   // camera is exposing.
   if(mDetectorId != 0 && mSTDevice->GetMainCamera()->ImageInProgress())
-    settings.shutter_action_ = ExposureSettings::SHUTTER_LEAVE_ALONE;
+    shutter_action = niad::CAMERA_SHUTTER_ACTION_NONE;
 
   // Get the driver
   SbigSTDriver &drv = SbigSTDriver::GetInstance();
 
   // unpack things from the settings
-  uint16_t exposure_time_csec = settings.exposure_duration_sec_ * 100;
-  uint16_t top                = settings.top_;
-  uint16_t left               = settings.left_;
-  uint16_t width              = settings.right_ - settings.left_;
-  uint16_t height             = settings.bottom_ - settings.top_;
-  uint16_t bin_mode           = settings.binning_mode_;
-  uint16_t shutter_state      = (uint16_t) settings.shutter_action_;
+  uint16_t exposure_time_csec = exposure_duration_sec * 100;
+  uint16_t width              = right - left;
+  uint16_t height             = bottom - top;
+  uint16_t bin_mode           = default_config.binning_mode;
+  uint16_t shutter_state      = 0;
+  if(shutter_action == niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE)
+    shutter_state = 1;
+  else if (shutter_action == niad::CAMERA_SHUTTER_ACTION_CLOSE_CLOSE)
+    shutter_state = 2;
 
   // start the exposure
-  std::cout << mDetectorId << " Taking exposure of "
+  std::cout << "Detector: " <<  mDetectorId << " is taking exposure of "
             << exposure_time_csec * 10 << " ms long." << std::endl;
 
   // start the exposure
@@ -267,8 +377,8 @@ image * SbigSTCamera::AcquireImage(ExposureSettings settings) {
 
     // return a 1x1 pixel image explicitly labeled as aborted.
     if(!do_exposure_) {
-      image * tmp = new image(1,1);
-      tmp->aborted_ = true;
+      ImageData * tmp = new ImageData(1,1);
+      tmp->aborted = true;
       return tmp;
     }
   }
@@ -299,7 +409,7 @@ image * SbigSTCamera::AcquireImage(ExposureSettings settings) {
   drv.RunCommand(CC_END_EXPOSURE, &ee_p, nullptr, mSTDevice->GetHandle());
 
   auto exposure_duration = exposure_end - exposure_start;
-  std::cout << mDetectorId << " "
+  std::cout << " Detector " << mDetectorId << " "
             << "Image took "
             << std::chrono::duration_cast<std::chrono::milliseconds>(
                    exposure_duration)
@@ -307,41 +417,28 @@ image * SbigSTCamera::AcquireImage(ExposureSettings settings) {
             << " ms" << std::endl;
 
   // read the data from the detector
+  std::cout << " Starting readout ..." << std::endl;
   auto readout_start = std::chrono::high_resolution_clock::now();
-  image * img = drv.DoReadout(mSTDevice->GetHandle(), mDetectorId, bin_mode, top,
+  ImageData * img = drv.DoReadout(mSTDevice->GetHandle(), mDetectorId, bin_mode, top,
                            left, width, height);
   auto readout_end = std::chrono::high_resolution_clock::now();
 
   // TODO: Temporary output for read time
   auto duration = readout_end - readout_start;
-  std::cout
-      << mDetectorId << " "
-      << "Read took "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
-      << " ms" << std::endl;
+  std::cout << " Detector " << mDetectorId << " "
+            << "Read took "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+            << " ms" << std::endl;
 
   // set values in the image
-  img->exposure_duration_sec_ = settings.exposure_duration_sec_;
-  img->exposure_start_        = exposure_start;
-  img->exposure_end_          = exposure_end;
-  img->filter_name_           = mSTDevice->GetFilterWheel()->GetActiveFilterName();
-  img->detector_name_         = mSTDevice->GetInfo().GetDeviceName();
+  img->exposure_duration_sec = exposure_duration_sec;
+  img->exposure_start        = exposure_start;
+  img->exposure_end          = exposure_end;
+  img->filter_name           = mSTDevice->GetFilterWheel()->getActiveFilterName();
+  img->detector_name         = mSTDevice->GetInfo().GetDeviceName();
+  img->temperature           = getTemperature(niad::TEMPERATURE_TYPE_SENSOR);
 
   // Exposure is complete. Reset the flag and return the image.
   do_exposure_ = false;
   return img;
-}
-
-void SbigSTCamera::AbortImage() {
-  do_exposure_ = false;
-}
-
-std::vector<SBIGReadoutMode> SbigSTCamera::GetReadoutModes() {
-  std::vector<SBIGReadoutMode> modes;
-
-  for(auto it: readout_modes_) {
-    modes.push_back(it.second);
-  }
-
-  return modes;
 }

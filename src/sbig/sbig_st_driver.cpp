@@ -228,7 +228,7 @@ void SbigSTDriver::CloseDevice(std::shared_ptr<SbigSTDevice> device) {
 }
 
 
-image * SbigSTDriver::DoReadout(short device_handle,
+ImageData * SbigSTDriver::DoReadout(short device_handle,
                             short detector_id,
                             uint16_t bin_mode,
                             uint16_t top,
@@ -237,7 +237,7 @@ image * SbigSTDriver::DoReadout(short device_handle,
                             uint16_t height) {
 
   // allocate the image output buffer
-  image * img = new image(width, height);
+  ImageData * img = new ImageData(width, height);
 
   // Obtain exclusive access for the driver to do a readout.
   std::lock_guard<std::mutex> readout_lock(device_readout_mutex_);
@@ -268,7 +268,7 @@ image * SbigSTDriver::DoReadout(short device_handle,
   rl_p.pixelStart = left;
   rl_p.pixelLength = width;
   for (size_t i = 0; (i < height) && do_readout_; i++) {
-    auto pTmp = img->data_.data() + (i * width); // pointer math
+    auto pTmp = img->data.data() + (i * width); // pointer math
     RunCommand(CC_READOUT_LINE, &rl_p, pTmp, device_handle);
   }
 

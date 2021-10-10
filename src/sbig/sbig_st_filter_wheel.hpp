@@ -14,18 +14,9 @@ class SbigSTDevice;
 #include <vector>
 
 
-struct SbigSTFilterWheelInfo {
-  std::string model_name = "";
-  uint16_t max_slots     = 0;
-  uint16_t active_slot   = 0;
-  std::map<size_t, std::string> slot_to_filter_name;
-}; // struct SbigSTFilterWheelInfo
-
 class SbigSTFilterWheel : public FilterWheel {
 protected:
   SbigSTDevice * device_ = nullptr;
-
-  SbigSTFilterWheelInfo info_;
 
   CFW_MODEL_SELECT model_ = CFWSEL_UNKNOWN;
 
@@ -47,10 +38,6 @@ public:
   void Init();
   virtual double setFilter(size_t filter_slot_id);
   virtual double setFilter(std::string filter_name);
-
-  std::map<size_t, std::string> GetSlotToFilterMap() { return info_.slot_to_filter_name; }
-  std::string GetActiveFilterName();
-  size_t GetActiveFilterSlot();
 
 public:
   /// overrides

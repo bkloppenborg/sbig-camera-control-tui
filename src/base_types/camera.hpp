@@ -4,6 +4,9 @@
 // local includes
 #include "device.hpp"
 
+// project includes
+#include "image_data.hpp"
+
 // external includes
 #include "camera-enums.pb.h"
 #include "temperature-enums.pb.h"
@@ -99,18 +102,46 @@ public:
 public:
 
   /// Turn on/off active cooling
-  /// \param sensor The sensor to target with the temperature setting
+  /// \param target The sensor to target with the temperature setting
   /// \param set_active Set to true to enable cooling, false to disable cooling
   /// \param temperature The temperature set point (Celsius)
-  virtual void setTemperatureTarget(niad::TemperatureType sensor,
+  virtual void setTemperatureTarget(niad::TemperatureType target,
                             bool set_active,
                             double temperature) = 0;
+
+  /// Get the current set point for the specified target
+  /// \param target The sensor to target with the temperature setting
+  /// \return Current temperature target (Celsius)
+  virtual double getTemperatureTarget(niad::TemperatureType target) = 0;
 
   /// Get the current temperature for the designated sensor
   /// \param sensor The sensor to inquire.
   virtual double getTemperature(niad::TemperatureType sensor) = 0;
 
+  /// Instruct the camera to take a full-frame image of the specified duration
+  /// \param duration Exposure duration (seconds)
+  /// \param readout_mode Readout mode for the sensor. Defaults to 1x1.
+  /// \param shutter_action Action for shutter to take. Defaults to OPEN_CLOSE.
+  /// \return ImageData.
+  virtual ImageData *acquireImage(double duration,
+          niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1,
+          niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE) = 0;
 
+  /// Instruct the camera to take a full frame exposure of the specified
+  /// duration
+  /// \param duration Exposure duration (seconds)
+  /// \param left Left-most pixel to read in the specified readout mode.
+  /// \param right Right-most pixel to read in the specified readout mode.
+  /// \param top Upper most pixel to read in the specified readout mode.
+  /// \param bottom Bottom most pixel to read in the specified readout mode.
+  /// \param readout_mode Readout mode for the sensor. Defaults to 1x1.
+  /// \param shutter_action Action for shutter to take. Defaults to OPEN_CLOSE.
+  /// \return ImageData.
+  virtual ImageData *acquireImage(double duration,
+          uint16_t left, uint16_t right,
+          uint16_t top,  uint16_t bottom,
+          niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1,
+          niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE) = 0;
 
   //
 }; // Camera

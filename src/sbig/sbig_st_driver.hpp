@@ -12,7 +12,7 @@
 class SbigSTDeviceInfo;
 class SbigSTDriver;
 class SbigSTDevice;
-class image;
+class ImageData;
 class ExposureSettings;
 
 struct SbigSTDriverInfo {
@@ -64,7 +64,7 @@ public:
   void RunCommand(short sbig_command, void *params, void *results, short handle);
   std::string ToString();
 
-  image * DoReadout(short device_handle, short detector_id,
+  ImageData * DoReadout(short device_handle, short detector_id,
                     uint16_t bin_mode,
                     uint16_t top, uint16_t left,
                     uint16_t width, uint16_t height);
