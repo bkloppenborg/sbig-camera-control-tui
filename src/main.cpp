@@ -48,6 +48,9 @@ int main(int argc, char *argv[]) {
     {"temperature",
      "Active cooling set point (Celsius). Values > 40 disables cooling.",
      "temperature"},
+    {"save-dir",
+     "Directory in which the images will be saved (defaults to /tmp)",
+     "dir"},
     {"start",
      "Start date-time for first exposure (ISO 8601 format)",
      "start"},
@@ -62,7 +65,7 @@ int main(int argc, char *argv[]) {
      "url"},
     {"readout-mode",
      "Readout mode to use. Valid options are 1x1, 2x2, 3x3, 9x9",
-     "mode"}
+     "mode"},
     });
 
   // Process command line options
@@ -115,12 +118,17 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  // Choose the filter to use.
-  if (parser.isSet("filter")) {
-    QString filter = parser.value("filter");
-    worker->setFilter(filter);
+  // Set the save directory.
+  if(parser.isSet("save-dir")) {
+    worker->setSaveDir(parser.value("save-dir"));
   }
 
+  // Choose the filter to use.
+  if (parser.isSet("filter")) {
+    worker->setFilter(parser.value("filter"));
+  }
+
+  // Set the readout mode.
   niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1;
   if(parser.isSet("readout-mode")) {
     QString mode = parser.value("readout-mode");
@@ -153,8 +161,6 @@ int main(int argc, char *argv[]) {
     stop_datetime = QDateTime::fromString(parser.value("stop"), Qt::ISODate);
     worker->setStopDateTime(stop_datetime);
   }
-
-  qInfo() << "Application ready at " << QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
   // Start taking images.
   thread->start();

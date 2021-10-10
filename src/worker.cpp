@@ -21,7 +21,15 @@ Worker::~Worker() {
 
 void Worker::Worker::run() {
 
-  setupCamera();
+  int status = setupCamera();
+  if(status != 0) {
+    qDebug() << "Camera initialization failed. Bailing...";
+    emit finished();
+    return;
+  }
+
+  qInfo() << "Worker ready at "
+          << QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
   // Set the filter wheel. This is a blocking call.
   mFilterWheel->setFilter(mFilterName.toStdString());
