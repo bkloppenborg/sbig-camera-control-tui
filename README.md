@@ -1,15 +1,26 @@
-NIAD Mount Server
+SBIG Camera Control TUI
 =====
 
-A server providing Network Interface for Astrophysical Devices (NIAD) 
-capabilities to legacy telescope mounts.
+Provides the ability to control legacy SBIG ST-series and related cameras
+from the command line. Specifically, the following features are implemented:
+
+* Control the quantity and duration of exposures.
+* Schedule exposures to start and end within specific time intervals.
+* Enable, disable, and set temperature regulation
+* Change filter in attached filter wheel.
+* Connect to [NIAD](https://github.com/bkloppenborg/niad)-enabled telescopes.
+* Set object name
+
+Note: Although both the primary and guide cameras are fully functional
+within this application, only the primary camera is utilized at present.
 
 # Prerequites
 
 The following items are required
 
+* [SBIG Legacy Driver](https://github.com/bkloppenborg/sbig-legacy-driver)
 * C++ compiler
-* Qt 5.12 with WebSockets and SerialPort packages
+* Qt 5.12 with WebSocket support.
 
 # Building
 
@@ -17,27 +28,7 @@ The following items are required
   cmake ..
   make
 
-# Configuration Options
+# Usage
 
-The server uses `QSettings` for storing configuration options. See
-[QSettings documentation](https://doc.qt.io/qt-5/qsettings.html#locations-where-application-settings-are-stored) 
-for location of configuration options on various platforms.
+See `camera-server -h` for help.
 
-# Advanced Logging
-
-There are a variety of advanced logging options in the mount server.
-To enable all of them, run the following command:
-
-    QT_LOGGING_RULES="*.debug=true" ./src/mount-server
-    
-# Supported Devices
-
-## Mounts
-
-At present this software supports:
-
-*Celestron Mounts including*
-
-GPS Series, i-Series, i-Series SE, CGE, Advanced GT, SLT, CPC ,GT, NexStar 4/5 SE
-NexStar 6/8 SE, CGE Pro, CGEM DX, LCM, Sky Prodigy, CPC Deluxe, GT 16, StarSeeker
-AVX, Cosmos, Evolution, CGX, CGXL, Astrofi, SkyWatcher
