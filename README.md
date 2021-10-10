@@ -30,5 +30,5 @@ The following items are required
 
 # Usage
 
-See `camera-server -h` for help.
+See `camera-controller -h` for help.
 
