@@ -18,7 +18,18 @@
 #include <QCommandLineOption>
 #include <QTimer>
 #include <QThread>
+#include <csignal>
 
+QThread * worker_thread = nullptr;
+Worker * worker = nullptr;
+
+void signal_handler(int s) {
+  std::signal(s, SIG_DFL);
+
+  qInfo() << "Quitting...";
+
+  worker->stopExposures();
+}
 
 int main(int argc, char *argv[]) {
   using namespace std;
@@ -34,6 +45,9 @@ int main(int argc, char *argv[]) {
   QCoreApplication::setOrganizationName("kloppenborg.net");
   QCoreApplication::setOrganizationDomain("kloppenborg.net");
   QCoreApplication::setApplicationName("SBIGCameraApp");
+
+  std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
 
   QCommandLineParser parser;
   parser.setApplicationDescription("Command line control for SBIG camera");
@@ -51,12 +65,6 @@ int main(int argc, char *argv[]) {
     {"save-dir",
      "Directory in which the images will be saved (defaults to /tmp)",
      "dir"},
-    {"start",
-     "Start date-time for first exposure (ISO 8601 format)",
-     "start"},
-    {"stop",
-     "Stop date-time (ISO 8601 format)",
-     "stop"},
     {"filter",
      "Photometric filter to use",
      "filter"},
@@ -82,12 +90,12 @@ int main(int argc, char *argv[]) {
   }
 
   // Create a camera controler.
-  QThread * thread = new QThread();
-  Worker * worker = new Worker(&client);
-  worker->moveToThread(thread);
-  QObject::connect(thread, &QThread::started, worker, &Worker::run);
-  QObject::connect(worker, &Worker::finished, thread, &QThread::quit);
-  QObject::connect(thread, &QThread::finished, &app, &QCoreApplication::quit);
+  worker_thread = new QThread();
+  worker = new Worker(&client);
+  worker->moveToThread(worker_thread);
+  QObject::connect(worker_thread, &QThread::started, worker, &Worker::run);
+  QObject::connect(worker, &Worker::finished, worker_thread, &QThread::quit);
+  QObject::connect(worker_thread, &QThread::finished, &app, &QCoreApplication::quit);
 
   // Set the temperature. If there are no other requests, exit.
   double temperature = 0;
@@ -148,22 +156,8 @@ int main(int argc, char *argv[]) {
   }
   worker->setReadoutMode(readout_mode);
 
-  // Set the start datetime.
-  QDateTime start_datetime = QDateTime::currentDateTimeUtc();
-  if (parser.isSet("start")) {
-    start_datetime = QDateTime::fromString(parser.value("start"), Qt::ISODate);
-    worker->setStartDateTime(start_datetime);
-  }
-
-  // Set the stop datetime.
-  QDateTime stop_datetime = QDateTime::currentDateTimeUtc();
-  if (parser.isSet("stop")) {
-    stop_datetime = QDateTime::fromString(parser.value("stop"), Qt::ISODate);
-    worker->setStopDateTime(stop_datetime);
-  }
-
   // Start taking images.
-  thread->start();
+  worker_thread->start();
 
   // Run the application and event loop.
   return app.exec();

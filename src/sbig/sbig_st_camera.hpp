@@ -52,7 +52,7 @@ public:
   std::string ToString();
 
   /// Stop an image in progress.
-  void  AbortImage();
+  void  abortExposure();
 
   /// Flag to indicate if an exposure is in progress.
   bool ImageInProgress() { return do_exposure_; }

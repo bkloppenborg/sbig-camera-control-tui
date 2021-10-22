@@ -32,6 +32,8 @@ public:
   /// Default destructor.
   ~Worker();
 
+  std::atomic<bool> mStopExposures;
+
 protected:
   /// NIAD client object.
   Client * mClient = nullptr;
@@ -64,11 +66,8 @@ protected:
   /// Directory into which the images will be saved.
   QDir mSaveDir = QDir("/tmp/");
 
-  /// Time at which the first image will start.
-  QDateTime mStartTime;
-
-  /// Time before which the last image should end. By default this is 1 day from "now".
-  QDateTime mStopTime;
+  bool mSetTemperature = false;
+  double mTemperatureTarget = 0;
 
 
 public slots:
@@ -130,6 +129,9 @@ public:
   /// Sets the directory for save files.
   /// \param directory Directory into which files should be saved.
   void setSaveDir(const QString & directory);
+
+  /// Indicate to the worker thread that exposures should stop.
+  void stopExposures();
 
       //
   }; // Worker

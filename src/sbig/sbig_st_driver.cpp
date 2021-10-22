@@ -270,9 +270,21 @@ ImageData * SbigSTDriver::DoReadout(short device_handle,
   rl_p.readoutMode = bin_mode;
   rl_p.pixelStart = left;
   rl_p.pixelLength = width;
-  for (size_t i = 0; (i < height) && do_readout_; i++) {
+  for (size_t i = 0; (i < height); i++) {
     auto pTmp = img->data.data() + (i * width); // pointer math
-    RunCommand(CC_READOUT_LINE, &rl_p, pTmp, device_handle);
+
+    if(do_readout_)
+      // If we are reading out lines, read one line.
+      RunCommand(CC_READOUT_LINE, &rl_p, pTmp, device_handle);
+    else {
+      // Otherwise, dump all of the remaining lines and break out.
+      DumpLinesParams dl_p;
+      dl_p.ccd = detector_id;
+      dl_p.readoutMode = bin_mode;
+      dl_p.lineLength = height - i;
+      RunCommand(CC_DUMP_LINES, &dl_p, nullptr, device_handle);
+      break;
+    }
   }
 
   // end the readout

@@ -98,8 +98,10 @@ public:
   /// Get the sensor readout modes
   virtual std::vector<niad::CameraReadoutMode> getReadoutModes();
 
-
 public:
+
+  /// Abort an exposure in progress
+  virtual void abortExposure() = 0;
 
   /// Turn on/off active cooling
   /// \param target The sensor to target with the temperature setting

@@ -25,6 +25,12 @@ public:
   /// Time at which the exposure ended.
   std::chrono::time_point<std::chrono::high_resolution_clock> exposure_end;
 
+  /// Time at which the readout began.
+  std::chrono::time_point<std::chrono::high_resolution_clock> readout_start;
+
+  /// Time at which the readout ended.
+  std::chrono::time_point<std::chrono::high_resolution_clock> readout_end;
+
   /// Duration of the exposure in units of seconds.
   double exposure_duration_sec = 0.0;
 

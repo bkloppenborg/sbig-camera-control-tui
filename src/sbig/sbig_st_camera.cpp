@@ -218,7 +218,7 @@ std::string SbigSTCamera::ToString() {
   return ss.str();
 }
 
-void SbigSTCamera::AbortImage() {
+void SbigSTCamera::abortExposure() {
   do_exposure_ = false;
 }
 
@@ -434,6 +434,8 @@ ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
   img->exposure_duration_sec = exposure_duration_sec;
   img->exposure_start        = exposure_start;
   img->exposure_end          = exposure_end;
+  img->readout_start         = readout_start;
+  img->readout_end           = readout_end;
   img->filter_name           = mSTDevice->GetFilterWheel()->getActiveFilterName();
   img->detector_name         = mSTDevice->GetInfo().GetDeviceName();
   img->temperature           = getTemperature(niad::TEMPERATURE_TYPE_SENSOR);

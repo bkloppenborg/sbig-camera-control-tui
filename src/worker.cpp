@@ -9,11 +9,7 @@
 #include <google/protobuf/util/time_util.h>
 
 Worker::Worker(Client * client)
-  : QObject(nullptr), mClient(client) {
-
-  mStartTime = QDateTime::currentDateTimeUtc();
-  mStopTime = QDateTime::currentDateTimeUtc();
-  mStopTime = mStopTime.addDays(1);
+  : QObject(nullptr), mClient(client), mStopExposures(false) {
 }
 
 Worker::~Worker() {
@@ -31,27 +27,19 @@ void Worker::run() {
   qInfo() << "Worker ready at "
           << QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
+  if(mSetTemperature) {
+    mMainCamera->setTemperatureTarget(niad::TEMPERATURE_TYPE_SENSOR, true, mTemperatureTarget);
+  }
+
   // Set the filter wheel. This is a blocking call.
   mFilterWheel->setFilter(mFilterName.toStdString());
 
-  if (QDateTime::currentDateTimeUtc() < mStartTime) {
-    qInfo() << "Waiting until specified time to start exposures...";
-  }
-
-  // Wait until the start time has elapsed, waking up every 100 ms.
-  while (QDateTime::currentDateTimeUtc() < mStartTime) {
-    QThread::msleep(100);
-  }
-
   for (size_t exp_num = 0; exp_num < mExposureQuanity; exp_num++) {
 
-    qDebug() << "Starting exposure" << exp_num;
-    // Exit the loop if we have exceeded the stop date-time.
-    auto now = QDateTime::currentDateTimeUtc();
-    if (now.addSecs(mExposureDuration) > mStopTime) {
-      qDebug() << "Stop time exceeded. Exiting.";
+    if(mStopExposures)
       break;
-    }
+
+    qDebug() << "Starting exposure" << exp_num;
 
     // Instruct the client to buffer positions
     mClient->startBuffering();
@@ -95,6 +83,8 @@ void Worker::run() {
     filename = mSaveDir.filePath(filename);
     image_data->saveToFITS(filename.toStdString(), true);
     qDebug() << "Saved " << filename;
+
+
 
     // Delete the image data
     delete image_data;
@@ -172,11 +162,8 @@ void Worker::setTemperature(double temperature)  {
   if(temperature < 40)
     enable_cooler = true;
 
-  // Set the temperature
-  mMainCamera->setTemperatureTarget(niad::TEMPERATURE_TYPE_SENSOR,
-                                    enable_cooler, temperature);
-
-  qInfo() << "Set temperature to " << temperature << " C" << endl;
+  mTemperatureTarget = temperature;
+  mSetTemperature = true;
 }
 
 void Worker::setFilter(const QString &filter_name) {
@@ -199,14 +186,12 @@ void Worker::setExposureDuration(double duration) {
   mExposureDuration = duration;
 }
 
-void Worker::setStartDateTime(QDateTime &dt) {
-  mStartTime = dt;
-}
-
-void Worker::setStopDateTime(QDateTime &dt) {
-  mStopTime = dt;
-};
-
 void Worker::setSaveDir(const QString &directory) {
   mSaveDir = directory;
+}
+
+void Worker::stopExposures() {
+  mStopExposures = true;
+
+  mMainCamera->abortExposure();
 }
