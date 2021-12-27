@@ -323,9 +323,11 @@ ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
     bottom  = default_config.max_height;
 
   // enforce exposure duration
+  if(exposure_duration_sec == 0.0)
+    exposure_duration_sec = 0.001;
   if (exposure_duration_sec < mExposureDurationMin)
     exposure_duration_sec = mExposureDurationMin;
-  if(exposure_duration_sec > mExposureDurationMax)
+  if (exposure_duration_sec > mExposureDurationMax)
     exposure_duration_sec = mExposureDurationMax;
 
   // Prohibit a guide camera from altering shutter state if the main
