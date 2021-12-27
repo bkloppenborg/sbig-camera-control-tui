@@ -232,12 +232,13 @@ void SbigSTDriver::CloseDevice(std::shared_ptr<SbigSTDevice> device) {
 
 
 ImageData * SbigSTDriver::DoReadout(short device_handle,
-                            short detector_id,
-                            uint16_t bin_mode,
-                            uint16_t top,
-                            uint16_t left,
-                            uint16_t width,
-                            uint16_t height) {
+                                    short detector_id,
+                                    uint16_t bin_mode,
+                                    uint16_t top,
+                                    uint16_t left,
+                                    uint16_t width,
+                                    uint16_t height,
+                                    bool discard_data) {
 
   // allocate the image output buffer
   ImageData * img = new ImageData(width, height);
@@ -273,17 +274,17 @@ ImageData * SbigSTDriver::DoReadout(short device_handle,
   for (size_t i = 0; (i < height); i++) {
     auto pTmp = img->data.data() + (i * width); // pointer math
 
-    if(do_readout_)
-      // If we are reading out lines, read one line.
-      RunCommand(CC_READOUT_LINE, &rl_p, pTmp, device_handle);
-    else {
-      // Otherwise, dump all of the remaining lines and break out.
+    // Check if we need to discard the data or abort the readout.
+    if(discard_data || !do_readout_) {
       DumpLinesParams dl_p;
       dl_p.ccd = detector_id;
       dl_p.readoutMode = bin_mode;
       dl_p.lineLength = height - i;
       RunCommand(CC_DUMP_LINES, &dl_p, nullptr, device_handle);
       break;
+  } else {
+      // If we are reading out lines, read one line.
+      RunCommand(CC_READOUT_LINE, &rl_p, pTmp, device_handle);
     }
   }
 

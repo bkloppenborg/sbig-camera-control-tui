@@ -18,6 +18,7 @@
 #include <QCommandLineOption>
 #include <QTimer>
 #include <QThread>
+#include <QSettings>
 #include <csignal>
 
 QThread * worker_thread = nullptr;
@@ -31,13 +32,20 @@ void signal_handler(int s) {
   worker->stopExposures();
 }
 
+int setup_from_cli(Worker *worker, QThread *worker_thread,
+                   Client &client,
+                   QCommandLineParser &parser);
+
+int setup_from_config(Worker *worker, QThread *worker_thread,
+                      Client &client,
+                      const QString & filename);
+
 int main(int argc, char *argv[]) {
   using namespace std;
   using namespace niad;
 
   qInfo() << "Starting SBIG Camera Application version "
-          << NIAD_EXAMPLES_VERSION
-          << "at"
+          << NIAD_EXAMPLES_VERSION << "at"
           << QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
 
   // Configure the application globally.
@@ -54,11 +62,15 @@ int main(int argc, char *argv[]) {
   parser.addHelpOption();
   parser.addVersionOption();
   parser.addPositionalArgument("object", "The object being observed");
-  parser.addPositionalArgument("exposure_quantity", "Total number of exposures");
+  parser.addPositionalArgument("exposure_quantity",
+                               "Total number of exposures");
   parser.addPositionalArgument("exposure_duration",
                                "Exposure duration (seconds)");
 
   parser.addOptions({
+    {"config",
+     "Configuration file",
+     "config"},
     {"temperature",
      "Active cooling set point (Celsius). Values > 40 disables cooling.",
      "temperature"},
@@ -74,20 +86,16 @@ int main(int argc, char *argv[]) {
     {"readout-mode",
      "Readout mode to use. Valid options are 1x1, 2x2, 3x3, 9x9",
      "mode"},
-    });
+    {"shutter-mode",
+     "Shutter mode to use. Valid options are OPEN_CLOSE [default], CLOSE_CLOSE",
+     "shutter-mode"}
+  });
 
   // Process command line options
   parser.process(app);
   auto num_args = parser.positionalArguments().size();
 
-  // Activate the NIAD client. Give it time to connect to NIAD servers
-  // before we start taking images.
   Client client;
-  QString telescope_url = "None";
-  bool connect_to_telescope = false;
-  if (parser.isSet("telescope-url")) {
-    client.open(parser.value("telescope-url"));
-  }
 
   // Create a camera controler.
   worker_thread = new QThread();
@@ -95,7 +103,41 @@ int main(int argc, char *argv[]) {
   worker->moveToThread(worker_thread);
   QObject::connect(worker_thread, &QThread::started, worker, &Worker::run);
   QObject::connect(worker, &Worker::finished, worker_thread, &QThread::quit);
-  QObject::connect(worker_thread, &QThread::finished, &app, &QCoreApplication::quit);
+  QObject::connect(worker_thread, &QThread::finished, &app,
+                   &QCoreApplication::quit);
+
+  // Configure the application from either the CLI or parser.
+  int status = 0;
+  if (parser.isSet("config")) {
+    QString filename = parser.value("config");
+    setup_from_config(worker, worker_thread, client, filename);
+  } else {
+    setup_from_cli(worker, worker_thread, client, parser);
+  }
+
+  // Start taking images.
+  worker_thread->start();
+
+  // Run the application and event loop.
+  return app.exec();
+}
+
+int setup_from_cli(Worker * worker, QThread * worker_thread, Client & client,
+                   QCommandLineParser & parser) {
+  using namespace std;
+
+  qInfo() << "Loading information from CLI";
+
+  // Determine the number of arguments
+  int num_args = parser.positionalArguments().size();
+
+  // Activate the NIAD client. Give it time to connect to NIAD servers
+  // before we start taking images.
+  QString telescope_url = "None";
+  bool connect_to_telescope = false;
+  if (parser.isSet("telescope-url")) {
+    client.open(parser.value("telescope-url"));
+  }
 
   // Set the temperature. If there are no other requests, exit.
   double temperature = 0;
@@ -127,7 +169,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Set the save directory.
-  if(parser.isSet("save-dir")) {
+  if (parser.isSet("save-dir")) {
     worker->setSaveDir(parser.value("save-dir"));
   }
 
@@ -138,7 +180,7 @@ int main(int argc, char *argv[]) {
 
   // Set the readout mode.
   niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1;
-  if(parser.isSet("readout-mode")) {
+  if (parser.isSet("readout-mode")) {
     QString mode = parser.value("readout-mode");
     if (mode == "1x1") {
       readout_mode = niad::CAMERA_READOUT_MODE_1X1;
@@ -156,10 +198,82 @@ int main(int argc, char *argv[]) {
   }
   worker->setReadoutMode(readout_mode);
 
-  // Start taking images.
-  worker_thread->start();
+  niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE;
+  if(parser.isSet("shutter-mode")) {
+    QString mode = parser.value("shutter-mode");
+    if(mode == "CLOSE_CLOSE") {
+      shutter_action = niad::CAMERA_SHUTTER_ACTION_CLOSE_CLOSE;
+    } else if (mode == "OPEN_OPEN") {
+      shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_OPEN;
+    }
+  }
+  worker->setShutterAction(shutter_action);
 
-  // Run the application and event loop.
-  return app.exec();
+  return 0;
 }
 
+int setup_from_config(Worker *worker, QThread *worker_thread,
+                      Client &client,
+                      const QString &filename) {
+
+  qInfo() << "Loading configuration from file.";
+
+  QSettings settings(filename, QSettings::IniFormat);
+
+  // Activate the NIAD client. Give it time to connect to NIAD servers
+  // before we start taking images.
+  QString telescope_url = settings.value("mount/url").toString();
+  client.open(telescope_url);
+
+  QString object_catalog = settings.value("object_info/catalog").toString();
+  QString object_id = settings.value("object_info/id").toString();
+  worker->setObjectName(object_catalog + "_" + object_id);
+
+  // Set exposure settings
+  int exposure_quantity = settings.value("camera/exposure_quantity").toInt();
+  worker->setExposureQuantity(exposure_quantity);
+
+  double exposure_duration = settings.value("camera/exposure_duration").toDouble();
+  worker->setExposureDuration(exposure_duration);
+
+  // Set the temperature.
+  double temperature = settings.value("camera/temperature").toDouble();
+  worker->setTemperature(temperature);
+
+  // Set up the save directory.
+  QString save_dir = settings.value("global/save_dir").toString();
+  worker->setSaveDir(save_dir);
+
+  // Set the filter
+  QString filter = settings.value("camera/filter").toString();
+  worker->setFilter(filter);
+
+  // Set the readout mode.
+  niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1;
+  QString mode = settings.value("camera/readout_mode").toString();
+  if (mode == "1x1") {
+    readout_mode = niad::CAMERA_READOUT_MODE_1X1;
+  } else if (mode == "2x2") {
+    readout_mode = niad::CAMERA_READOUT_MODE_2X2;
+  } else if (mode == "3x3") {
+    readout_mode = niad::CAMERA_READOUT_MODE_3X3;
+  } else if (mode == "9x9") {
+    readout_mode = niad::CAMERA_READOUT_MODE_9X9;
+  } else {
+    std::cerr << "Readout mode '" << mode.toStdString() << "' not supported."
+              << std::endl;
+    return -1;
+  }
+  worker->setReadoutMode(readout_mode);
+
+  niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE;
+  QString action = settings.value("camera/shutter_action").toString();
+  if (action == "CLOSE_CLOSE") {
+    shutter_action = niad::CAMERA_SHUTTER_ACTION_CLOSE_CLOSE;
+  } else if (action == "OPEN_OPEN") {
+    shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_OPEN;
+  }
+  worker->setShutterAction(shutter_action);
+
+  return 0;
+}

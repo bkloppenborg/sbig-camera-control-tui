@@ -31,8 +31,14 @@ void Worker::run() {
     mMainCamera->setTemperatureTarget(niad::TEMPERATURE_TYPE_SENSOR, true, mTemperatureTarget);
   }
 
-  // Set the filter wheel. This is a blocking call.
-  mFilterWheel->setFilter(mFilterName.toStdString());
+  // Check to see if the filter is a number
+  bool filter_name_is_number = false;
+  int filter_id = mFilterName.toInt(&filter_name_is_number);
+  if (filter_name_is_number) {
+    mFilterWheel->setFilter(filter_id);
+  } else {
+    mFilterWheel->setFilter(mFilterName.toStdString());
+  }
 
   for (size_t exp_num = 0; exp_num < mExposureQuanity; exp_num++) {
 
@@ -46,7 +52,7 @@ void Worker::run() {
 
     // Take the image.
     ImageData *image_data =
-      mMainCamera->acquireImage(mExposureDuration, mReadoutMode);
+      mMainCamera->acquireImage(mExposureDuration, mReadoutMode, mShutterAction);
 
     // Instruct the client to stop buffering.
     mClient->stopBuffering();
@@ -83,8 +89,6 @@ void Worker::run() {
     filename = mSaveDir.filePath(filename);
     image_data->saveToFITS(filename.toStdString(), true);
     qDebug() << "Saved " << filename;
-
-
 
     // Delete the image data
     delete image_data;
@@ -194,4 +198,8 @@ void Worker::stopExposures() {
   mStopExposures = true;
 
   mMainCamera->abortExposure();
+}
+
+void Worker::setShutterAction(niad::CameraShutterAction action) {
+  mShutterAction = action;
 }

@@ -69,6 +69,7 @@ protected:
   bool mSetTemperature = false;
   double mTemperatureTarget = 0;
 
+  niad::CameraShutterAction mShutterAction = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE;
 
 public slots:
 
@@ -132,6 +133,9 @@ public:
 
   /// Indicate to the worker thread that exposures should stop.
   void stopExposures();
+
+  /// Sets the action (if any) the shutter should take
+  void setShutterAction(niad::CameraShutterAction action);
 
       //
   }; // Worker

@@ -111,10 +111,12 @@ public:
   /// \param left The coordinate for the left-most pixel for the readout.
   /// \param width The width of the resulting image.
   /// \param height The height of the resulting image.
+  /// \param dump_pixels Dump the pixels rather than saving their data.
   ImageData * DoReadout(short device_handle, short detector_id,
-                    uint16_t bin_mode,
-                    uint16_t top, uint16_t left,
-                    uint16_t width, uint16_t height);
+                        uint16_t bin_mode,
+                        uint16_t top, uint16_t left,
+                        uint16_t width, uint16_t height,
+                        bool discard_data = false);
 
   /// Abort all active readout operations.
   void AbortReadout();

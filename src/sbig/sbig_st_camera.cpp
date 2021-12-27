@@ -378,11 +378,8 @@ ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // return a 1x1 pixel image explicitly labeled as aborted.
-    if(!do_exposure_) {
-      ImageData * tmp = new ImageData(1,1);
-      tmp->aborted = true;
-      return tmp;
-    }
+    if(!do_exposure_)
+      break;
   }
 
   // For the remainder of the exposure, poll the completion status flag
@@ -401,7 +398,7 @@ ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
     else if (mDetectorId== 1 || mDetectorId== 2) // guide cameras
       exposure_complete = get_bit(query_r.status, 2) & get_bit(query_r.status, 3);
 
-  } while (exposure_complete == false);
+  } while (do_exposure_ && !exposure_complete);
 
   auto exposure_end = std::chrono::high_resolution_clock::now();
 
@@ -418,29 +415,41 @@ ImageData * SbigSTCamera::acquireImage(double exposure_duration_sec,
                    .count()
             << " ms" << std::endl;
 
-  // read the data from the detector
-  std::cout << " Starting readout ..." << std::endl;
-  auto readout_start = std::chrono::high_resolution_clock::now();
-  ImageData * img = drv.DoReadout(mSTDevice->GetHandle(), mDetectorId, bin_mode, top,
-                           left, width, height);
-  auto readout_end = std::chrono::high_resolution_clock::now();
+  ImageData * img = nullptr;
+  if (do_exposure_) {
 
-  // TODO: Temporary output for read time
-  auto duration = readout_end - readout_start;
-  std::cout << " Detector " << mDetectorId << " "
-            << "Read took "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
-            << " ms" << std::endl;
+    // read the data from the detector
+    std::cout << " Starting readout ..." << std::endl;
+    auto readout_start = std::chrono::high_resolution_clock::now();
+    img = drv.DoReadout(mSTDevice->GetHandle(), mDetectorId,
+                                   bin_mode, top, left, width, height);
+    auto readout_end = std::chrono::high_resolution_clock::now();
 
-  // set values in the image
-  img->exposure_duration_sec = exposure_duration_sec;
-  img->exposure_start        = exposure_start;
-  img->exposure_end          = exposure_end;
-  img->readout_start         = readout_start;
-  img->readout_end           = readout_end;
-  img->filter_name           = mSTDevice->GetFilterWheel()->getActiveFilterName();
-  img->detector_name         = mSTDevice->GetInfo().GetDeviceName();
-  img->temperature           = getTemperature(niad::TEMPERATURE_TYPE_SENSOR);
+    // TODO: Temporary output for read time
+    auto duration = readout_end - readout_start;
+    std::cout << " Detector " << mDetectorId << " "
+              << "Read took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(duration)
+                     .count()
+              << " ms" << std::endl;
+
+    // set values in the image
+    img->exposure_duration_sec = exposure_duration_sec;
+    img->exposure_start = exposure_start;
+    img->exposure_end = exposure_end;
+    img->readout_start = readout_start;
+    img->readout_end = readout_end;
+    img->filter_name = mSTDevice->GetFilterWheel()->getActiveFilterName();
+    img->detector_name = mSTDevice->GetInfo().GetDeviceName();
+    img->temperature = getTemperature(niad::TEMPERATURE_TYPE_SENSOR);
+  } else {
+
+    drv.DoReadout(mSTDevice->GetHandle(), mDetectorId,
+                  bin_mode, top, left, width, height, true);
+
+    img = new ImageData(1, 1);
+    img->aborted = true;
+  }
 
   // Exposure is complete. Reset the flag and return the image.
   do_exposure_ = false;
