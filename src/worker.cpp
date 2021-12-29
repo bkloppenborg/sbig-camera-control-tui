@@ -83,9 +83,8 @@ void Worker::run() {
     // Populate the image with some additional information.
     image_data->object_name = mObjectName.toStdString();
 
-    QString filename = mObjectName + "_" +
-      QDateTime::currentDateTimeUtc().toString(Qt::ISODate) +
-      ".fits";
+    QString filename = QDateTime::currentDateTimeUtc().toString(Qt::ISODate) +
+      "_" + mObjectName + ".fits";
     filename = mSaveDir.filePath(filename);
     image_data->saveToFITS(filename.toStdString(), true);
     qDebug() << "Saved " << filename;
