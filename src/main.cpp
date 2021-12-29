@@ -109,8 +109,17 @@ int main(int argc, char *argv[]) {
   // Configure the application from either the CLI or parser.
   int status = 0;
   if (parser.isSet("config")) {
+    // Get the filename
     QString filename = parser.value("config");
-    setup_from_config(worker, worker_thread, client, filename);
+
+    // Verify that the file exists.
+    QFileInfo cfg_file(filename);
+    if(cfg_file.exists() && cfg_file.isFile()) {
+      setup_from_config(worker, worker_thread, client, filename);
+    } else {
+      qWarning() << "Configuration file not found. Exiting.";
+      return 0;
+    }
   } else {
     setup_from_cli(worker, worker_thread, client, parser);
   }
@@ -223,34 +232,43 @@ int setup_from_config(Worker *worker, QThread *worker_thread,
   // Activate the NIAD client. Give it time to connect to NIAD servers
   // before we start taking images.
   QString telescope_url = settings.value("mount/url").toString();
+  qInfo() << "Mount URL:" << telescope_url;
   client.open(telescope_url);
 
   QString object_catalog = settings.value("object_info/catalog").toString();
   QString object_id = settings.value("object_info/id").toString();
+  qInfo() << "Catalog:" << object_catalog;
+  qInfo() << "Object ID:" << object_id;
   worker->setObjectName(object_catalog + "_" + object_id);
 
   // Set exposure settings
   int exposure_quantity = settings.value("camera/exposure_quantity").toInt();
+  qInfo() << "Exposure Quantity:" << exposure_quantity;
   worker->setExposureQuantity(exposure_quantity);
 
   double exposure_duration = settings.value("camera/exposure_duration").toDouble();
+  qInfo() << "Exposure Duration:" << exposure_duration;
   worker->setExposureDuration(exposure_duration);
 
   // Set the temperature.
   double temperature = settings.value("camera/temperature").toDouble();
+  qInfo() << "Set Temperature:" << temperature;
   worker->setTemperature(temperature);
 
   // Set up the save directory.
   QString save_dir = settings.value("global/save_dir").toString();
+  qInfo() << "Save Dir:" << save_dir;
   worker->setSaveDir(save_dir);
 
   // Set the filter
   QString filter = settings.value("camera/filter").toString();
+  qInfo() << "Filter:" << filter;
   worker->setFilter(filter);
 
   // Set the readout mode.
   niad::CameraReadoutMode readout_mode = niad::CAMERA_READOUT_MODE_1X1;
   QString mode = settings.value("camera/readout_mode").toString();
+  qInfo() << "Readout Mode:" << mode;
   if (mode == "1x1") {
     readout_mode = niad::CAMERA_READOUT_MODE_1X1;
   } else if (mode == "2x2") {
@@ -268,6 +286,7 @@ int setup_from_config(Worker *worker, QThread *worker_thread,
 
   niad::CameraShutterAction shutter_action = niad::CAMERA_SHUTTER_ACTION_OPEN_CLOSE;
   QString action = settings.value("camera/shutter_action").toString();
+  qInfo() << "Shutter Action:" << action;
   if (action == "CLOSE_CLOSE") {
     shutter_action = niad::CAMERA_SHUTTER_ACTION_CLOSE_CLOSE;
   } else if (action == "OPEN_OPEN") {
