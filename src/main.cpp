@@ -256,7 +256,9 @@ int setup_from_config(Worker *worker, QThread *worker_thread,
   worker->setTemperature(temperature);
 
   // Set up the save directory.
-  QString save_dir = settings.value("global/save_dir").toString();
+  QString base_dir = settings.value("global/base_dir").toString();
+  QString raw_dir = settings.value("global/raw_sub_dir").toString();
+  QString save_dir = base_dir + "/" + raw_dir;
   qInfo() << "Save Dir:" << save_dir;
   worker->setSaveDir(save_dir);
 

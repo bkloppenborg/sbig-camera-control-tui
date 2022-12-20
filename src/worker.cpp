@@ -111,19 +111,25 @@ int Worker::setupCamera() {
     return -1;
   }
 
-  string filter_set = "RGBL";
-  if (filter_set == "RGBL") {
+  string filter_set = "R,G,B,L,SA200";
+  if (filter_set == "R,G,B,L") {
     info.SetFilter(1, "Red");
     info.SetFilter(2, "Green");
     info.SetFilter(3, "Blue");
     info.SetFilter(4, "Clear");
     info.SetFilter(5, "None");
-  } else if (filter_set == "UBVRI") {
+  } else if (filter_set == "U,B,V,R,I") {
     info.SetFilter(1, "U");
     info.SetFilter(2, "B");
     info.SetFilter(3, "V");
     info.SetFilter(4, "R");
     info.SetFilter(5, "I");
+  } else if (filter_set == "R,G,B,L,SA200") {
+    info.SetFilter(1, "Red");
+    info.SetFilter(2, "Green");
+    info.SetFilter(3, "Blue");
+    info.SetFilter(4, "SA200");
+    info.SetFilter(5, "None");
   }
 
   // Get a shared pointer to the cameras and filter wheel.

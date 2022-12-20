@@ -29,6 +29,9 @@ inline std::string to_iso_8601(std::chrono::time_point<std::chrono::system_clock
 	// e.g. 2016-08-30T08:18:51.867479
 	stream << "." << std::fixed << std::setw(6) << std::setfill('0') << delta_us;
 
+  // Lastly append 'Z' for zulu time
+  stream << "Z";
+
 	return stream.str();
 }
 
