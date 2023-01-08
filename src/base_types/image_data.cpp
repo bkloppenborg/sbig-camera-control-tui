@@ -71,9 +71,14 @@ void ImageData::saveToFITS(std::string filename, bool overwrite) {
   //
   // Information about the object
   //
+  fits_write_key(fptr, TSTRING, "CATALOG",
+                 (void *) catalog_name.c_str(),
+                 "Name of catalog to which the object belongs",
+                 &status);
+
   fits_write_key(fptr, TSTRING, "OBJECT",
                  (void *) object_name.c_str(),
-                 "Name of detector used to make the observation",
+                 "Name of object from the catalog.",
                  &status);
 
   //

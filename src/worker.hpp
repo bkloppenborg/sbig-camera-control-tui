@@ -57,6 +57,9 @@ protected:
   /// The duration of each exposure (in seconds)
   double mExposureDuration = 0.0;
 
+  /// Name of the catalog
+  QString mCatalogName = "NO_NAME";
+
   /// Name of the object being imaged.
   QString mObjectName = "NO_NAME";
 
@@ -104,6 +107,12 @@ public:
   /// Specify the desired camera readout mode. It will be used within run().
   /// \param mode The desired readout mode for the camera.
   void setReadoutMode(niad::CameraReadoutMode mode);
+
+
+  /// Set the name of the catalog to which the object belongs.
+  /// \param catalog_name The name of the object. Keep below 68 characters.
+  ///        and use underscores when possible.
+  void setCatalogName(const QString & catalog_name);
 
   /// Set the name of the object being observed. This will be used within run()
   /// to specify a prefix on the save files AND encoded within the FITS file.

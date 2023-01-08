@@ -35,6 +35,7 @@ public:
   double exposure_duration_sec = 0.0;
 
   // object information
+  std::string catalog_name = ""; ///< Name of catalog from where the obsevation comes.
   std::string object_name = ""; ///< Name of object under observation.
 
   // observatory information

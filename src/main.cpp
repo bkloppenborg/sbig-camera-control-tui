@@ -38,7 +38,8 @@ int setup_from_cli(Worker *worker, QThread *worker_thread,
 
 int setup_from_config(Worker *worker, QThread *worker_thread,
                       Client &client,
-                      const QString & filename);
+                      const QString & filename,
+                      QCommandLineParser &parser);
 
 int main(int argc, char *argv[]) {
   using namespace std;
@@ -61,35 +62,38 @@ int main(int argc, char *argv[]) {
   parser.setApplicationDescription("Command line control for SBIG camera");
   parser.addHelpOption();
   parser.addVersionOption();
-  parser.addPositionalArgument("object", "The object being observed");
   parser.addPositionalArgument("exposure_quantity",
                                "Total number of exposures");
   parser.addPositionalArgument("exposure_duration",
                                "Exposure duration (seconds)");
 
   parser.addOptions({
-    {"config",
-     "Configuration file",
-     "config"},
-    {"temperature",
-     "Active cooling set point (Celsius). Values > 40 disables cooling.",
-     "temperature"},
-    {"save-dir",
-     "Directory in which the images will be saved (defaults to /tmp)",
-     "dir"},
-    {"filter",
-     "Photometric filter to use",
-     "filter"},
-    {"telescope-url",
-     "URI to a NIAD telescope",
-     "url"},
-    {"readout-mode",
-     "Readout mode to use. Valid options are 1x1, 2x2, 3x3, 9x9",
-     "mode"},
-    {"shutter-mode",
-     "Shutter mode to use. Valid options are OPEN_CLOSE [default], CLOSE_CLOSE",
-     "shutter-mode"}
-  });
+      {"config",
+       "Configuration file",
+       "config"},
+      {"catalog",
+       "The catalog to which the object belongs",
+       "catalog"},
+      {"object_id",
+       "The identifier in the catalog for the specified object",
+       "object_id"},
+      {"temperature",
+       "Active cooling set point (Celsius). Values > 40 disables cooling.",
+       "temperature"},
+      {"save-dir",
+       "Directory in which the images will be saved (defaults to /tmp)",
+       "dir"},
+      {"filter", "Photometric filter to use",
+       "filter"},
+      {"telescope-url", "URI to a NIAD telescope",
+       "url"},
+      {"readout-mode",
+       "Readout mode to use. Valid options are 1x1, 2x2, 3x3, 9x9",
+       "mode"},
+      {"shutter-mode",
+       "Shutter mode to use. Valid options are OPEN_CLOSE [default], "
+       "CLOSE_CLOSE",
+       "shutter-mode"}});
 
   // Process command line options
   parser.process(app);
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
     // Verify that the file exists.
     QFileInfo cfg_file(filename);
     if(cfg_file.exists() && cfg_file.isFile()) {
-      setup_from_config(worker, worker_thread, client, filename);
+      setup_from_config(worker, worker_thread, client, filename, parser);
     } else {
       qWarning() << "Configuration file not found. Exiting.";
       return 0;
@@ -163,19 +167,32 @@ int setup_from_cli(Worker * worker, QThread * worker_thread, Client & client,
 
   // Set up the arguments
   auto positionalArguments = parser.positionalArguments();
-  QString object_id = positionalArguments[0];
-  int num_exposures = positionalArguments[1].toInt();
-  double exposure_duration = positionalArguments[2].toDouble();
-
-  worker->setObjectName(positionalArguments[0]);
-  worker->setExposureQuantity(positionalArguments[1].toInt());
-  worker->setExposureDuration(positionalArguments[2].toDouble());
+  int num_exposures = positionalArguments[0].toInt();
+  worker->setExposureQuantity(positionalArguments[0].toInt());
+  double exposure_duration = positionalArguments[1].toDouble();
+  worker->setExposureDuration(positionalArguments[1].toDouble());
 
   if (positionalArguments.isEmpty()) {
     cerr << "Missing required arguments. See -h for more information."
          << endl;
     return -1;
   }
+
+  // Catalog name
+  QString catalog_name = "NONE";
+  if(parser.isSet("catalog")) {
+    catalog_name = parser.value("catalog");
+  }
+  worker->setCatalogName(catalog_name);
+  qInfo() << "Catalog:" << catalog_name;
+
+  // Object Name
+  QString object_id = "NONE";
+  if(parser.isSet("object_id")) {
+    object_id = parser.value("object_id");
+  }
+  worker->setObjectName(catalog_name);
+  qInfo() << "Object ID:" << object_id;
 
   // Set the save directory.
   if (parser.isSet("save-dir")) {
@@ -223,7 +240,8 @@ int setup_from_cli(Worker * worker, QThread * worker_thread, Client & client,
 
 int setup_from_config(Worker *worker, QThread *worker_thread,
                       Client &client,
-                      const QString &filename) {
+                      const QString &filename,
+                      QCommandLineParser &parser) {
 
   qInfo() << "Loading configuration from file.";
 
@@ -235,11 +253,22 @@ int setup_from_config(Worker *worker, QThread *worker_thread,
   qInfo() << "Mount URL:" << telescope_url;
   client.open(telescope_url);
 
+  // Read the catalog from the configuration file
   QString object_catalog = settings.value("object_info/catalog").toString();
-  QString object_id = settings.value("object_info/id").toString();
+  // Override the catalog name if it was specified on the CLI
+  if(parser.isSet("catalog")) {
+    object_catalog = parser.value("catalog");
+  }
+  worker->setCatalogName(object_catalog);
   qInfo() << "Catalog:" << object_catalog;
+
+  // Read the object from the configuration file
+  QString object_id = settings.value("object_info/object_id").toString();
+  if(parser.isSet("object_id")) {
+    object_id = parser.value("object_id");
+  }
+  worker->setObjectName(object_id);
   qInfo() << "Object ID:" << object_id;
-  worker->setObjectName(object_catalog + "_" + object_id);
 
   // Set exposure settings
   int exposure_quantity = settings.value("camera/exposure_quantity").toInt();

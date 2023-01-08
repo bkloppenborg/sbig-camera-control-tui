@@ -82,9 +82,10 @@ void Worker::run() {
 
     // Populate the image with some additional information.
     image_data->object_name = mObjectName.toStdString();
+    image_data->catalog_name = mCatalogName.toStdString();
 
     QString filename = QDateTime::currentDateTimeUtc().toString(Qt::ISODate) +
-      "_" + mObjectName + ".fits";
+      "_" + mCatalogName + "_" + mObjectName + ".fits";
     filename = mSaveDir.filePath(filename);
     image_data->saveToFITS(filename.toStdString(), true);
     qDebug() << "Saved " << filename;
@@ -181,6 +182,10 @@ void Worker::setFilter(const QString &filter_name) {
 
 void Worker::setReadoutMode(niad::CameraReadoutMode mode) {
   mReadoutMode = mode;
+}
+
+void Worker::setCatalogName(const QString &catalog_name) {
+  mCatalogName = catalog_name;
 }
 
 void Worker::setObjectName(const QString &object_name) {
