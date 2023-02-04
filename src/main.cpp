@@ -259,16 +259,16 @@ int setup_from_config(Worker *worker, QThread *worker_thread,
   if(parser.isSet("catalog")) {
     object_catalog = parser.value("catalog");
   }
-  worker->setCatalogName(object_catalog);
   qInfo() << "Catalog:" << object_catalog;
+  worker->setCatalogName(object_catalog);
 
   // Read the object from the configuration file
   QString object_id = settings.value("object_info/object_id").toString();
   if(parser.isSet("object_id")) {
     object_id = parser.value("object_id");
   }
-  worker->setObjectName(object_id);
   qInfo() << "Object ID:" << object_id;
+  worker->setObjectName(object_id);
 
   // Set exposure settings
   int exposure_quantity = settings.value("camera/exposure_quantity").toInt();
