@@ -191,7 +191,7 @@ int setup_from_cli(Worker * worker, QThread * worker_thread, Client & client,
   if(parser.isSet("object_id")) {
     object_id = parser.value("object_id");
   }
-  worker->setObjectName(catalog_name);
+  worker->setObjectName(object_id);
   qInfo() << "Object ID:" << object_id;
 
   // Set the save directory.
